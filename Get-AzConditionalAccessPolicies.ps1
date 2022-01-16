@@ -65,6 +65,6 @@ Function Get-AzConditionalAccessPolicies
     $Array 
 }
 
-Get-AzConditionalAccessPolicies
+Get-AzConditionalAccessPolicies | epcsv $home\Desktop\AzureConditionalAccessPolicies.csv -NoTypeInformation
 
 
