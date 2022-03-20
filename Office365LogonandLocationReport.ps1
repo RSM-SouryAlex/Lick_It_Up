@@ -65,3 +65,4 @@ Connect-EXOnline
         }
     }
 }
+Get-Office365LogonAndLocationReport

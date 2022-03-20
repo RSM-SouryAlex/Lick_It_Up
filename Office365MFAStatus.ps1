@@ -46,4 +46,4 @@ ForEach($user in $users)
         Licenses = $user.licenses
     }
 }
-$Result | Select UserName,MFAStatus,MFAEmail,IsLicensed,BlockCredential,PhoneNumber,AlternativePhoneNumber,licenses | ft
+$Result | Select UserName,MFAStatus,MFAEmail,IsLicensed,BlockCredential,PhoneNumber,AlternativePhoneNumber,licenses 

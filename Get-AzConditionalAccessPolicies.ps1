@@ -6,6 +6,7 @@ Function Get-AzConditionalAccessPolicies
 
     [System.Collections.ArrayList]$Array = @()
     [System.Collections.ArrayList]$AR = @()
+    [System.Collections.ArrayList]$ExcludedUsersArray = @()
 
     foreach($policy in $ConditionalAccessPolicies)
     {
@@ -40,6 +41,23 @@ Function Get-AzConditionalAccessPolicies
             $IncludeGroupsName = $AR.name -join ', '
         }
 
+        $ExcludeUsers = $policy.Conditions.Users.ExcludeUsers
+
+        if($ExcludeUsers -ne $null)
+        {
+            foreach($id in $ExcludeUsers.Split(''))
+            {
+                $ExUserObj = "" | select Name
+                $UserObj = Get-AzureADUser -ObjectId $id -ErrorAction Stop
+                $ExUserName = $($UserObj.UserPrincipalName)
+
+                $ExUserObj.Name = $ExUserName
+                $ExcludedUsersArray += $ExUserObj
+                $ExUserObj = $null
+            }
+            $ExcludedUsersName = $ExcludedUsersArray.name -join ', '
+        }
+
         $obj.DisplayName = $policy.DisplayName
         $obj.State = $policy.State
         $obj.IncludeApplications = $IncludeApplications
@@ -47,7 +65,7 @@ Function Get-AzConditionalAccessPolicies
         $obj.IncludeUserActions = $IncludeUserActions
         $obj.IncludeProtectionLevels = $IncludeProtectionLevels
         $obj.IncludeUsers = $IncludeUsers
-        $obj.ExcludeUsers = $ExcludeUsers
+        $obj.ExcludeUsers = $ExcludedUsersName
         $obj.IncludeGroups = $IncludeGroupsName
         $obj.IncludeRoles = $IncludeRoles
         $obj.ExcludeRoles = $ExcludeRoles
@@ -65,6 +83,6 @@ Function Get-AzConditionalAccessPolicies
     $Array 
 }
 
-Get-AzConditionalAccessPolicies | epcsv $home\Desktop\AzureConditionalAccessPolicies.csv -NoTypeInformation
+Get-AzConditionalAccessPolicies 
 
 
