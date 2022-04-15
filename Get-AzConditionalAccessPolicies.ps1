@@ -23,8 +23,27 @@ Function Get-AzConditionalAccessPolicies
         [string]$Operator = $policy.GrantControls._Operator
         [string]$BuiltInControls = $policy.GrantControls.BuiltInControls
 
-        $IncludeGroups = $policy.Conditions.Users.IncludeGroups
+        [System.Collections.ArrayList]$IncludedUsersArray = @()
+        if($IncludeUsers -ne 'All' -and $IncludeUsers -ne '')
+        {
+            foreach($id in $IncludeUsers.Split(' '))
+            {
+                $IncUserObj = "" | select Name
+                try
+                {
+                    $UserObj = Get-AzureADUser -ObjectId $id -ErrorAction Stop
+                }
+                catch{}
+                $IncUserName = $($UserObj.DisplayName)
 
+                $IncUserObj.Name = $IncUserName
+                $IncludedUsersArray += $IncUserObj
+                $IncUserObj = $null
+            }
+            $IncludedUsersName = $IncludedUsersArray.name -join ', '
+        }
+        
+        $IncludeGroups = $policy.Conditions.Users.IncludeGroups
         if($IncludeGroups -ne $null)
         {
             foreach($id in $IncludeGroups.Split(' '))
@@ -42,11 +61,10 @@ Function Get-AzConditionalAccessPolicies
         }
 
         $ExcludeUsers = $policy.Conditions.Users.ExcludeUsers
-
-        if($ExcludeUsers -ne $null)
+        if($ExcludeUsers -ne '')
         {
             foreach($id in $ExcludeUsers.Split(''))
-            {
+            {                
                 $ExUserObj = "" | select Name
                 $UserObj = Get-AzureADUser -ObjectId $id -ErrorAction Stop
                 $ExUserName = $($UserObj.UserPrincipalName)
@@ -58,17 +76,50 @@ Function Get-AzConditionalAccessPolicies
             $ExcludedUsersName = $ExcludedUsersArray.name -join ', '
         }
 
+        [System.Collections.ArrayList]$IncludeRoleArray = @()
+        if($IncludeRoles -ne '')
+        {
+            foreach($id in $IncludeRoles.Split(''))
+            {                
+                $IncRoleObj = "" | select Name                
+                $RoleObj = Get-AzureADMSRoleDefinition -Id $id -ErrorAction stop
+                $IncRoleName = $($RoleObj.DisplayName)
+
+                $IncRoleObj.Name = $IncRoleName
+                $IncludeRoleArray += $IncRoleObj
+                $IncRoleObj = $null
+            }
+            $IncludedRolesName = $IncludeRoleArray.name -join ', '
+        }
+
+        [System.Collections.ArrayList]$ExcludeRoleArray = @()
+        if($ExcludeRoles -ne '')
+        {
+            foreach($id in $ExcludeRoles.Split(''))
+            {                
+                $ExRoleObj = "" | select Name                
+                $RoleObj = Get-AzureADMSRoleDefinition -Id $id -ErrorAction stop
+                $ExRoleName = $($RoleObj.DisplayName)
+
+                $ExRoleObj.Name = $ExRoleName
+                $ExcludeRoleArray += $ExRoleObj
+                $ExRoleObj = $null
+            }
+            $ExcludeRolesName = $ExcludeRoleArray.name -join ', '
+        }
+
+
         $obj.DisplayName = $policy.DisplayName
         $obj.State = $policy.State
         $obj.IncludeApplications = $IncludeApplications
         $obj.ExcludeApplications = $ExcludeApplications
         $obj.IncludeUserActions = $IncludeUserActions
         $obj.IncludeProtectionLevels = $IncludeProtectionLevels
-        $obj.IncludeUsers = $IncludeUsers
+        $obj.IncludeUsers = $IncludedUsersName
         $obj.ExcludeUsers = $ExcludedUsersName
         $obj.IncludeGroups = $IncludeGroupsName
-        $obj.IncludeRoles = $IncludeRoles
-        $obj.ExcludeRoles = $ExcludeRoles
+        $obj.IncludeRoles = $IncludedRolesName
+        $obj.ExcludeRoles = $ExcludeRolesName
         $obj.Operator = $Operator
         $obj.BuiltInControls = $BuiltInControls
 
