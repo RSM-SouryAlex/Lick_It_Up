@@ -1,4 +1,4 @@
-﻿$Domain = 'mygenfcu.org'
+﻿$Domain = Read-Host -Prompt 'Enter Hostname'
 
 $dkim1 = Resolve-DnsName -Type CNAME -Name selector1._domainkey.$Domain | select -ExpandProperty NameHost
 $dkim2 = Resolve-DnsName -Type CNAME -Name selector2._domainkey.$Domain | select -ExpandProperty NameHost
