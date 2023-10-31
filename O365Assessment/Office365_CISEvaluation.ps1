@@ -352,8 +352,6 @@ function Connectto-Services
     Connect-Graph -Scopes $GraphScopes 
 }
 
-
-
 function Disconnect-Services
 {
     Disconnect-AzureAD
@@ -363,12 +361,23 @@ function Disconnect-Services
 }
 
 
-
 function Invoke-365DataCollection
 {
+    [cmdletBinding()]
+    Param
+    (
+        [parameter(Mandatory=$true)]
+        $OutputDir,
+
+        [parameter(Mandatory=$true)]
+        $Domain
+    )
+
     # Params
-    $OutputDir = "$home\Desktop\HyCapacity-O365Data"
-    $Domain = 'HyCapacity'
+    # $OutputDir = "$home\Desktop\HyCapacity-O365Data"
+    # $Domain = 'HyCapacity'
+
+    $opdir = Join-Path -Path $OutputDir -ChildPath ($Domain + '-365Data')
 
     if(!(Test-Path $OutputDir))
     {
@@ -376,8 +385,6 @@ function Invoke-365DataCollection
         Write-Host " Creating Report Output Directories..." -ForegroundColor $LightColor
         New-Item -Path "$home\desktop" -Name $Domain-O365Data -ItemType Directory | Out-Null
     }
-
-
     #region Secure Score
 
     $SecureScore = Get-MgSecuritySecureScore | select -First 1
@@ -395,8 +402,6 @@ function Invoke-365DataCollection
     
     Get-Office365AuditLog | epcsv $OutputDir\O365AuditLog-$Domain.csv -NoTypeInformation
     Get-MailboxAuditing | epcsv $OutputDir\ExoMailboxAuditing-$Domain.csv -NoTypeInformation
-
-
 
 
     #region 1. Azure Active Directory
@@ -549,7 +554,6 @@ function Invoke-365DataCollection
     Get-OrganizationConfig |Select-Object id*,MailTipsAllTipsEnabled,MailTipsExternalRecipientsTipsEnabled, MailTipsGroupMetricsEnabled,MailTipsLargeAudienceThreshold | epcsv $OutputDir\4.12_MailTips-$Domain.csv -NoTypeInformation
     #endregion
 }
-
 
 
 function Invoke-365Analyzer
@@ -1137,7 +1141,6 @@ function Invoke-365Analyzer
     #endregion
 
 }
-
 
 
 function Write-365HTMLReport
@@ -6453,7 +6456,6 @@ $PolicyFrag2
 }
 
 
-
 function Show-Menu 
 { 
     [cmdletBinding()]
@@ -6484,7 +6486,11 @@ do
     switch ($selection)
     {
         {$selection -eq '1'} { Connectto-Services }
-        {$selection -eq '2'} { Invoke-365DataCollection -OutputDir $OutputDir -Domain $Domain -Verbose }
+        {$selection -eq '2'} 
+        { 
+            $Domain = Read-Host -Prompt 'Enter client domain name'
+            Invoke-365DataCollection -OutputDir $OutputDir -Domain $Domain -Verbose 
+        }
         {$selection -eq '3'} { Invoke-365Analyzer -Path $OutputDir -Domain $Domain -ClientName $Domain -ShowReport }
         {$selection -eq '4'} { Write-SummaryHTMLReport -Path $OutputDir -Domain $Domain -ClientName $Domain -ShowReport }
         {$selection -eq 'q'} {''}
@@ -6496,7 +6502,7 @@ until($selection -eq 'q')
 
 
 
-
+break
 
 
 
