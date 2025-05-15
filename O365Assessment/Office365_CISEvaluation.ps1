@@ -314,6 +314,163 @@ function Get-ExoCalendarSharing
     }
 }
 
+function Get-MFAStatus
+{
+    [cmdletBinding()]
+    Param
+    (
+        [Parameter(Mandatory = $false)]
+        [switch]$AdminOnly
+    )
+
+
+    [System.Collections.ArrayList]$array = @()
+    $UserCount=0
+    $PrintedUser=0
+
+    #Loop through each user
+    $AllMSOLUsers = Get-MsolUser -All 
+
+    foreach($MsolUser in $AllMSOLUsers)
+    {
+        $obj = $null
+        $obj = "" | select "DisplayName","UserPrincipalName","MFAStatus","ActivationStatus","DefaultMFAMethod","AllMFAMethods","MFAPhone","MFAEmail","LicenseStatus","IsAdmin","AdminRoles","SignInStatus","LastDirSyncTime"
+        # $obj = "" | select "DisplayName","UserPrincipalName","MFAStatus","ActivationStatus","AllMFAMethods","LicenseStatus","IsAdmin","AdminRoles","SignInStatus"
+
+        $UserCount++
+        $DisplayName = $MsolUser.DisplayName
+        $Upn = $MsolUser.UserPrincipalName
+        $MFAStatus = $MsolUser.StrongAuthenticationRequirements.State
+        $MethodTypes = $MsolUser.StrongAuthenticationMethods
+        $RolesAssigned = ""
+
+ 
+        Write-Progress -Activity "`n     Processed user count: $UserCount "`n"  Currently Processing: $DisplayName"
+        
+        if($MsolUser.BlockCredential -eq "True")
+        {
+            $SignInStatus = "False"
+            $SignInStat = "Denied"
+        }
+        else
+        {
+            $SignInStatus = "True"
+            $SignInStat = "Allowed"
+        }
+
+        if($MsolUser.IsLicensed -eq $true)
+        {
+            $LicenseStat = "Licensed"
+        }
+        else
+        {
+            $LicenseStat = "Unlicensed"
+        }
+
+         #Check for user's Admin role
+         $Roles = (Get-MsolUserRole -UserPrincipalName $upn).Name
+         if($Roles.count -eq 0)
+         {
+            $RolesAssigned = "No roles"
+            $IsAdmin = "False"
+         }
+         else
+         {
+            $IsAdmin = "True"
+            foreach($Role in $Roles)
+            {
+                $RolesAssigned=$RolesAssigned+$Role
+                
+                if($Roles.indexof($role) -lt (($Roles.count)-1))
+                {
+                    $RolesAssigned=$RolesAssigned+","
+                }
+            }
+         }
+
+        #Check for MFA enabled user
+        if(($MethodTypes -ne $Null) -or ($MFAStatus -ne $Null))
+        {
+            #Check for Conditional Access
+            if($MFAStatus -eq $null)
+            {
+                $MFAStatus='Enabled via Conditional Access'
+            }
+
+            $Methods = $null
+            $MethodTypes = $null
+            $MFAEmail = $null
+            $MFAPhone = $null
+            $MethodTypes = $MsolUser.StrongAuthenticationMethods.MethodType
+            $DefaultMFAMethod = ($MsolUser.StrongAuthenticationMethods | where{$_.IsDefault -eq "True"}).MethodType
+            $MFAPhone = $MsolUser.StrongAuthenticationUserDetails.PhoneNumber
+            $MFAEmail = $MsolUser.StrongAuthenticationUserDetails.Email
+
+            if($MFAPhone -eq $Null)
+            { 
+                $MFAPhone = ""
+            }
+          
+            if($MFAEmail -eq $Null)
+            { 
+                $MFAEmail = ""
+            }
+
+            if($MethodTypes -ne $Null)
+            {
+                $ActivationStatus="Yes"
+                foreach($MethodType in $MethodTypes)
+                {
+                    if($Methods -ne "")
+                    {
+                        $Methods=$Methods+","
+                    }
+            
+                    $Methods=$Methods+$MethodType
+                }
+            }
+
+            else
+            {
+                $ActivationStatus="No"
+                $Methods=""
+                $DefaultMFAMethod=""
+                $MFAPhone=""
+                $MFAEmail=""
+            }
+        }
+                      
+            $obj.DisplayName = $DisplayName
+            $obj.UserPrincipalName = $Upn
+            $obj.MFAStatus = $MFAStatus
+            $obj.ActivationStatus = $ActivationStatus
+            #$obj.DefaultMFAMethod = $DefaultMFAMethod
+            $obj.AllMFAMethods = $Methods
+            $obj.MFAPhone = $MsolUser.StrongAuthenticationUserDetails.PhoneNumber
+            $obj.MFAEmail = $MsolUser.StrongAuthenticationUserDetails.Email
+            $obj.LicenseStatus = $LicenseStat
+            $obj.SignInStatus = $SignInStat
+            $obj.IsAdmin = $IsAdmin
+            $obj.AdminRoles = $RolesAssigned
+            $obj.LastDirSyncTime = $MsolUser.LastDirSyncTime
+
+            $array += $obj
+            $obj = $null
+
+    }#EndForeach
+
+    if($AdminOnly.IsPresent)
+    {
+        $array | Where IsAdmin -eq 'True'
+    }
+    else
+    {
+        $array
+    }
+
+}
+
+
 #endregion
 
 
@@ -350,6 +507,7 @@ function Connectto-Services
     Connect-AzureAD
     $GraphScopes = "SecurityEvents.Read.All", "Policy.Read.All", "Group.Read.All"
     Connect-Graph -Scopes $GraphScopes 
+    Connect-MgGraph -Scopes Directory.AccessAsUser.All, Directory.ReadWrite.All, User.ReadWrite.All, AuditLog.Read.All, Group.Read.All, Policy.Read.All, SecurityEvents.Read.All
 }
 
 function Disconnect-Services
@@ -374,28 +532,36 @@ function Invoke-365DataCollection
     )
 
     # Params
-    # $OutputDir = "$home\Desktop\HyCapacity-O365Data"
-    # $Domain = 'HyCapacity'
+     $OutputDir = "C:\Users\e060080\OneDrive - RSM\CR3\AngelOak"
+     $Domain = 'AngelOak'
 
-    $opdir = Join-Path -Path $OutputDir -ChildPath ($Domain + '-365Data')
+    $opdir = Join-Path -Path $OutputDir -ChildPath ($Domain + '-M365Data')
+    $OutputDir = $opdir
 
     if(!(Test-Path $OutputDir))
     {
         Write-Host "$(Get-Date -Format "[hh:mm:ss tt]")" -ForegroundColor $Darkcolor -NoNewline
         Write-Host " Creating Report Output Directories..." -ForegroundColor $LightColor
-        New-Item -Path "$home\desktop" -Name $Domain-O365Data -ItemType Directory | Out-Null
+        New-Item -Path "$OutputDir" -Name $Domain-M365Data -ItemType Directory | Out-Null
     }
+    if(!(Test-Path $opdir))
+    {
+        Write-Host "$(Get-Date -Format "[hh:mm:ss tt]")" -ForegroundColor $Darkcolor -NoNewline
+        Write-Host " Creating Report Output Directories..." -ForegroundColor $LightColor
+        New-Item -Path "$OutputDir" -Name $Domain-M365Data -ItemType Directory | Out-Null
+    }
+
     #region Secure Score
 
     $SecureScore = Get-MgSecuritySecureScore | select -First 1
     $ControlScore = $SecureScore.ControlScores
     $EnabledServices = $SecureScore.EnabledServices
-    $ControlScores | select ControlCategory,ControlName,Score,Description | epcsv $OutputDir\SecureScore-$Domain.csv -NoTypeInformation
+    $ControlScore | select ControlCategory,ControlName,Score,Description | epcsv $OutputDir\SecureScore-$Domain.csv -NoTypeInformation
 
     #endregion
 
     # Imap POP enabled mailboxes
-    Get-CASMailbox -Filter {ImapEnabled -eq "true" -or PopEnabled -eq "true" } | Select @{n="Identity";e= {$_.primarysmtpaddress}},ImapEnabled,PopEnabled,SmtpClientAuthenticationDisabled | epcsv $OutputDir\ImapPopEnabled-$Domain.csv -NoTypeInformation
+    Get-CASMailbox -Filter {ImapEnabled -eq "true" -or PopEnabled -eq "true" }  | Select @{n="Identity";e= {$_.primarysmtpaddress}},ImapEnabled,PopEnabled,SmtpClientAuthenticationDisabled | epcsv $OutputDir\ImapPopEnabled-$Domain.csv -NoTypeInformation
     Get-CASMailbox | Select-Object @{n="Identity";e= {$_.primarysmtpaddress}},ImapEnabled,PopEnabled,SmtpClientAuthenticationDisabled | epcsv $OutputDir\AllImapPopMBX-$Domain.csv -NoTypeInformation
     
     Get-ModernAuthExchange | epcsv $OutputDir\ExoModernAuth-$Domain.csv -NoTypeInformation
@@ -419,25 +585,25 @@ function Invoke-365DataCollection
     Get-NumberofAdmins | epcsv $OutputDir\1.1.3_GlobalAdminCount-$Domain.csv -NoTypeInformation
 
     # 1.1.4 (L1) Ensure self-service password reset is enabled
-    $ControlScore | ? ControlName -eq 'SelfServicePasswordReset' | Select ControlCategory,ControlName,Score
+    $ControlScore | ? ControlName -eq 'SelfServicePasswordReset' | Select ControlCategory,ControlName,Score | epcsv $OutputDir\ScoredItems-$Domain.csv -NoTypeInformation
 
     # 1.1.5 (L1) Ensure that password protection is enabled for Active Directory
-    $ControlScore | ? ControlName -eq 'aad_password_protection' | Select ControlCategory,ControlName,Score
+    $ControlScore | ? ControlName -eq 'aad_password_protection' | Select ControlCategory,ControlName,Score | epcsv $OutputDir\ScoredItems-$Domain.csv -NoTypeInformation -Append
 
     # 1.1.6 (L1) Enable Conditional Access policies to block legacy authentication
-    $ControlScore | ? ControlName -eq 'BlockLegacyAuthentication' | Select ControlCategory,ControlName,Score
+    $ControlScore | ? ControlName -eq 'BlockLegacyAuthentication' | Select ControlCategory,ControlName,Score | epcsv $OutputDir\ScoredItems-$Domain.csv -NoTypeInformation -Append
     Get-OrganizationConfig | select -ExpandProperty DefaultAuthenticationPolicy | % {Get-AuthenticationPolicy $_ | Select AllowBasicAuth* } | epcsv $OutputDir\1.1.6_AllowBasicAuth-$Domain.csv
 
     # 1.1.7 (L1) Ensure that password hash sync is enabled for resiliency and leaked credential detection
-    $ControlScore | ? ControlName -eq 'PasswordHashSync' | Select ControlCategory,ControlName,Score
+    $ControlScore | ? ControlName -eq 'PasswordHashSync' | Select ControlCategory,ControlName,Score | epcsv $OutputDir\ScoredItems-$Domain.csv -NoTypeInformation -Append
 
     # 1.1.8 (L1) Enabled Identity Protection to identify anomalous logon behavior
     
     # 1.1.8 (L2) Enable Azure AD Identity Protection sign-in risk policies
-    $ControlScore | ? ControlName -eq 'SigninRiskPolicy' | Select ControlCategory,ControlName,Score
+    $ControlScore | ? ControlName -eq 'SigninRiskPolicy' | Select ControlCategory,ControlName,Score | epcsv $OutputDir\ScoredItems-$Domain.csv -NoTypeInformation -Append
 
     # 1.1.9 (L2) Enable Azure AD Identity Protection user risk policies
-    $ControlScore | ? ControlName -eq 'UserRiskPolicy' | Select ControlCategory,ControlName,Score
+    $ControlScore | ? ControlName -eq 'UserRiskPolicy' | Select ControlCategory,ControlName,Score | epcsv $OutputDir\ScoredItems-$Domain.csv -NoTypeInformation -Append
     
     # 1.1.10 (L2) Use Just In Time privileged access to Office 365 roles
     
@@ -474,12 +640,12 @@ function Invoke-365DataCollection
     # 2.6 - (L2) Ensure user consent to apps accessing company data on their behalf is not allowed"
     Get-MsolCompanyInformation | epcsv $OutputDir\MSOLCompanyInformation-$Domain.csv -NoTypeInformation
 
-    ipcsv $OutputDir\MSOLCompanyInformation-$Domain.csv | select UsersPermissionToUserConsent*
+    ipcsv $OutputDir\MSOLCompanyInformation-$Domain.csv | select UsersPermissionToUserConsent* 
     ipcsv $OutputDir\MSOLCompanyInformation-$Domain.csv | select UsersPermission*
 
     # 2.7 - (L2) Ensure the admin consent workflow is enabled
-    Connect-MgGraph -Scopes "DelegatedPermissionGrant.ReadWrite.All Directory.AccessAsUser.All Directory.Read.All"
-    Import-Module Microsoft.Graph.Identity.SignIns
+    #Connect-MgGraph -Scopes "DelegatedPermissionGrant.ReadWrite.All Directory.AccessAsUser.All Directory.Read.All"
+    #Import-Module Microsoft.Graph.Identity.SignIns
     Get-MgPolicyAdminConsentRequestPolicy | epcsv $OutputDir\AdminConsentRequestPolicy-$Domain.csv -NoTypeInformation
 
     # 2.8 (L2) - Ensure users installing Outlook add-ins is not allowed
@@ -1117,7 +1283,7 @@ function Invoke-365Analyzer
 
     #endregion
 
-    #region Call Evaluation functions
+     #region Call Evaluation functions
     $IssueList = Join-Path -Path $OutputDir -ChildPath WarningList-$Domain.csv
 
     if(Test-Path $IssueList)
@@ -6492,7 +6658,7 @@ do
             Invoke-365DataCollection -OutputDir $OutputDir -Domain $Domain -Verbose 
         }
         {$selection -eq '3'} { Invoke-365Analyzer -Path $OutputDir -Domain $Domain -ClientName $Domain -ShowReport }
-        {$selection -eq '4'} { Write-SummaryHTMLReport -Path $OutputDir -Domain $Domain -ClientName $Domain -ShowReport }
+        {$selection -eq '4'} { Write-365HTMLReport -Path $OutputDir -Domain $Domain -ClientName $Domain -ShowReport }
         {$selection -eq 'q'} {''}
     }
 }
@@ -6500,6 +6666,8 @@ until($selection -eq 'q')
 
 
 
+
+ipcsv $OutputDir\WarningList-$Domain.csv | ? Rating -eq 'Fail' | ft -Wrap
 
 
 break

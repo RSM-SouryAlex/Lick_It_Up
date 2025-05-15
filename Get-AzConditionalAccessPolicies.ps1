@@ -6,7 +6,6 @@ Function Get-AzConditionalAccessPolicies
 
     [System.Collections.ArrayList]$Array = @()
     [System.Collections.ArrayList]$AR = @()
-    [System.Collections.ArrayList]$ExcludedUsersArray = @()
 
     foreach($policy in $ConditionalAccessPolicies)
     {
@@ -23,8 +22,9 @@ Function Get-AzConditionalAccessPolicies
         [string]$Operator = $policy.GrantControls._Operator
         [string]$BuiltInControls = $policy.GrantControls.BuiltInControls
 
+
         [System.Collections.ArrayList]$IncludedUsersArray = @()
-        if($IncludeUsers -ne 'All' -and $IncludeUsers -ne '')
+        if($IncludeUsers -ne 'All' -and $IncludeUsers -ne 'None' -and $IncludeUsers -ne '')
         {
             foreach($id in $IncludeUsers.Split(' '))
             {
@@ -42,7 +42,12 @@ Function Get-AzConditionalAccessPolicies
             }
             $IncludedUsersName = $IncludedUsersArray.name -join ', '
         }
-        
+        else
+        {
+            $IncludedUsersName = $IncludeUsers
+        }
+
+        [System.Collections.ArrayList]$IncludedGroupsName = @()        
         $IncludeGroups = $policy.Conditions.Users.IncludeGroups
         if($IncludeGroups -ne $null)
         {
@@ -60,10 +65,10 @@ Function Get-AzConditionalAccessPolicies
             $IncludeGroupsName = $AR.name -join ', '
         }
 
-        $ExcludeUsers = $policy.Conditions.Users.ExcludeUsers
+        [System.Collections.ArrayList]$ExcludedUsersArray = @()
         if($ExcludeUsers -ne '')
         {
-            foreach($id in $ExcludeUsers.Split(''))
+            foreach($id in $ExcludeUsers.Split(' '))
             {                
                 $ExUserObj = "" | select Name
                 $UserObj = Get-AzureADUser -ObjectId $id -ErrorAction Stop
@@ -74,6 +79,10 @@ Function Get-AzConditionalAccessPolicies
                 $ExUserObj = $null
             }
             $ExcludedUsersName = $ExcludedUsersArray.name -join ', '
+        }
+        else
+        {
+            $ExcludedUsersName = $ExcludeUsers
         }
 
         [System.Collections.ArrayList]$IncludeRoleArray = @()
@@ -91,6 +100,10 @@ Function Get-AzConditionalAccessPolicies
             }
             $IncludedRolesName = $IncludeRoleArray.name -join ', '
         }
+        else
+        {
+            $IncludedRolesName = $IncludeRoles
+        }
 
         [System.Collections.ArrayList]$ExcludeRoleArray = @()
         if($ExcludeRoles -ne '')
@@ -106,6 +119,10 @@ Function Get-AzConditionalAccessPolicies
                 $ExRoleObj = $null
             }
             $ExcludeRolesName = $ExcludeRoleArray.name -join ', '
+        }
+        else
+        {
+            $ExcludeRolesName = $ExcludeRoles
         }
 
 
@@ -128,12 +145,11 @@ Function Get-AzConditionalAccessPolicies
         $obj2 = $null
         $IncludeGroupsName = $null
         $AR = @()
-
     }
 
     $Array 
 }
 
-Get-AzConditionalAccessPolicies 
+Get-AzConditionalAccessPolicies | ogv
 
 

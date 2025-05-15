@@ -154,4 +154,3 @@
 
 }
 
-Get-MFAStatus 
