@@ -1,15 +1,57 @@
-﻿Connect-MgGraph -Scopes "RoleManagement.Read.Directory","User.Read.All","Policy.Read.All","Group.Read.All","Domain.Read.All","Directory.Read.All"
+﻿# 1. Connect to M365
+Connect-MgGraph -Scopes "RoleManagement.Read.Directory","User.Read.All","Policy.Read.All","Group.Read.All","Domain.Read.All","Directory.Read.All"
 Connect-ExchangeOnline
 Get-MgContext
 
-
+# 2. Create a folder to store collected data
 $OutputDir = "C:\Users\e060080\OneDrive - RSM\M365Scan\ISPN"
 $Domain = "ISPN"
 New-OutputDir -OutputDir "C:\Users\e060080\OneDrive - RSM\M365Scan\ISPN" -Domain 'ISPN'
 
-# Collect Data
+# 3. Collect Data
+
+Collect-Admin_1.1.1 -OutputDir $OutputDir -Domain $Domain
+Collect-Admin_1.1.3 -OutputDir $OutputDir -Domain $Domain
+Collect-Admin_1.1.4 -OutputDir $OutputDir -Domain $Domain
+Collect-Admin_1.2.1 -OutputDir $OutputDir -Domain $Domain
+Collect-Admin_1.2.2 -OutputDir $OutputDir -Domain $Domain
+Collect-Admin_1.3.1 -OutputDir $OutputDir -Domain $Domain
+Collect-Admin_1.3.3 -OutputDir $OutputDir -Domain $Domain
+Collect-Admin_1.3.6 -OutputDir $OutputDir -Domain $Domain
+
+Collect-Defender_2.1.1 -OutputDir $OutputDir -Domain $Domain
+Collect-Defender_2.1.12 -OutputDir $OutputDir -Domain $Domain
+Collect-Defender_2.1.14 -OutputDir $OutputDir -Domain $Domain
+Collect-Defender_2.1.2 -OutputDir $OutputDir -Domain $Domain
+Collect-Defender_2.1.4 -OutputDir $OutputDir -Domain $Domain
+Collect-Defender_2.1.5 -OutputDir $OutputDir -Domain $Domain
+Collect-Defender_2.1.6 -OutputDir $OutputDir -Domain $Domain
+Collect-Defender_2.1.7 -OutputDir $OutputDir -Domain $Domain
+Collect-Defender_2.1.9 -OutputDir $OutputDir -Domain $Domain
+
+Collect-MSPurview_3.1.1 -OutputDir $OutputDir -Domain $Domain
+
+Collect-EntraAdmin_5.1.2.2 -OutputDir $OutputDir -Domain $Domain
+Collect-EntraAdmin_5.1.3.1 -OutputDir $OutputDir -Domain $Domain
+Collect-EntraAdmin_5.1.5.1 -OutputDir $OutputDir -Domain $Domain
+COllect-EntraAdmin_5.1.6.2 -OutputDir $OutputDir -Domain $Domain
+Collect-EntraAdmin_5.1.6.3 -OutputDir $OutputDir -Domain $Domain
+Collect-EntraAdmin_5.1.8.1 -OutputDir $OutputDir -Domain $Domain
+
+Collect-Exo_6.1.1 -OutputDir $OutputDir -Domain $Domain
+Collect-Exo_6.1.2 -OutputDir $OutputDir -Domain $Domain
+Collect-Exo_6.1.4 -OutputDir $OutputDir -Domain $Domain
+Collect-Exo_6.2.1 -OutputDir $OutputDir -Domain $Domain
+Collect-Exo_6.2.3 -OutputDir $OutputDir -Domain $Domain
+Collect-Exo_6.3.1 -OutputDir $OutputDir -Domain $Domain
+Collect-Exo_6.5.3 -OutputDir $OutputDir -Domain $Domain
+Collect-Exo_6.5.4 -OutputDir $OutputDir -Domain $Domain
 
 
+
+
+
+# 4. Evaluate
 
 $CISEVAL = Invoke-CISEvaluation -OutputDir $OutputDir -Domain $Domain
 $CISEVAL |ft
@@ -740,8 +782,16 @@ function Collect-EntraAdmin_5.1.8.1
 Get-AcceptedDomain | epcsv $OutputDir\AcceptedDomain-$Domain.csv -NoTypeInformation
 
 
-#  6.1.1 (L1) Ensure 'AuditDisabled' organizationally is set to 'False' (Automated)
+<#
+.Synopsis
+   (L1) Ensure 'AuditDisabled' organizationally is set to 'False' (Automated)
 
+.DESCRIPTION
+   Long description
+
+.EXAMPLE
+   Example of how to use this cmdlet
+#>
 function Collect-Exo_6.1.1
 {
     [cmdletBinding()]
@@ -757,10 +807,16 @@ function Collect-Exo_6.1.1
     Get-OrganizationConfig | epcsv $OutputDir\OrganizationConfig-$Domain.csv -NoTypeInformation
 }
 
+<#
+.Synopsis
+   (L1) Ensure mailbox auditing for E3 users is Enabled (Automated)
 
+.DESCRIPTION
+   Long description
 
-# 6.1.2 (L1) Ensure mailbox auditing for E3 users is Enabled (Automated)
-
+.EXAMPLE
+   Example of how to use this cmdlet
+#>
 function Collect-Exo_6.1.2
 {
     [cmdletBinding()]
@@ -777,10 +833,16 @@ function Collect-Exo_6.1.2
     $MailAudit | epcsv $OutputDir\MailboxAudit-$Domain.csv -NoTypeInformation
 }
 
+<#
+.Synopsis
+   (L1) Ensure 'AuditBypassEnabled' is not enabled on mailboxes (Automated)
 
+.DESCRIPTION
+   Long description
 
-# 6.1.4 (L1) Ensure 'AuditBypassEnabled' is not enabled on mailboxes (Automated)
-
+.EXAMPLE
+   Example of how to use this cmdlet
+#>
 function Collect-Exo_6.1.4
 {
     [cmdletBinding()]
@@ -798,10 +860,16 @@ function Collect-Exo_6.1.4
 
 }
 
+<#
+.Synopsis
+   (L1) Ensure all forms of mail forwarding are blocked and/or disabled (Automated)
 
+.DESCRIPTION
+   Long description
 
-# 6.2.1 (L1) Ensure all forms of mail forwarding are blocked and/or disabled (Automated)
-
+.EXAMPLE
+   Example of how to use this cmdlet
+#>
 function Collect-Exo_6.2.1
 {
     [cmdletBinding()]
@@ -818,14 +886,18 @@ function Collect-Exo_6.2.1
     $TransportRule | epcsv $OutputDir\TransportRules-$Domain.csv -NoTypeInformation
 }
 
-
-
-
 # 6.2.2 (L1) Ensure mail transport rules do not whitelist specific domains (Automated)
 
+<#
+.Synopsis
+   (L1) Ensure email from external senders is identified (Automated)
 
-# 6.2.3 (L1) Ensure email from external senders is identified (Automated)
+.DESCRIPTION
+   Long description
 
+.EXAMPLE
+   Example of how to use this cmdlet
+#>
 function Collect-Exo_6.2.3
 {
     [cmdletBinding()]
@@ -841,11 +913,16 @@ function Collect-Exo_6.2.3
     Get-ExternalInOutlook | epcsv $OutputDir\ExternalInOutlook-$Domain.csv -NoTypeInformation
 }
 
+<#
+.Synopsis
+   (L2) Ensure users installing Outlook add-ins is not allowed (Automated)
 
+.DESCRIPTION
+   Long description
 
-
-# 6.3.1 (L2) Ensure users installing Outlook add-ins is not allowed (Automated)
-
+.EXAMPLE
+   Example of how to use this cmdlet
+#>
 function Collect-Exo_6.3.1
 {
     [cmdletBinding()]
@@ -867,16 +944,20 @@ function Collect-Exo_6.3.1
     $pol | select Identity,@{l='AssignedRoles';e={[string]::join(',',$_.AssignedRoles)}} | epcsv $OutputDir\RoleAssignmentPolicy-$Domain.csv -NoTypeInformation
 }
 
-
-
 # 6.5.1 (L1) Ensure modern authentication for Exchange Online is enabled (Automated)
-
 
 # 6.5.2 (L1) Ensure MailTips are enabled for end users (Automated)
 
+<#
+.Synopsis
+   (L2) Ensure additional storage providers are restricted in Outlook on the web (Automated)
 
-# 6.5.3 (L2) Ensure additional storage providers are restricted in Outlook on the web (Automated)
+.DESCRIPTION
+   Long description
 
+.EXAMPLE
+   Example of how to use this cmdlet
+#>
 function Collect-Exo_6.5.3
 {
     [cmdletBinding()]
@@ -892,9 +973,16 @@ function Collect-Exo_6.5.3
     Get-OwaMailboxPolicy | Select Name, AdditionalStorageProvidersAvailable | epcsv $OutputDir\OwaMailboxPolicy-$Domain.csv -NoTypeInformation
 }
 
+<#
+.Synopsis
+   (L1) Ensure SMTP AUTH is disabled (Automated)
 
-# 6.5.4 (L1) Ensure SMTP AUTH is disabled (Automated)
+.DESCRIPTION
+   Long description
 
+.EXAMPLE
+   Example of how to use this cmdlet
+#>
 function Collect-Exo_6.5.4
 {
     [cmdletBinding()]
